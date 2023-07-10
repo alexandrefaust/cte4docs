@@ -19,7 +19,7 @@ mysql_senha     = '123456'
 
 domain          = 'https://console.4docs.cloud'
 urllogin        = '/login'
-urlrequest      = '/requests/js?customer_id=36&limit=' + str(quantidade) + '&status=SUCCESS'
+urlrequest      = '/requests/js?customer_id=37&limit=' + str(quantidade) + '&status=SUCCESS'
 urljson         = '/json/'
 values          = {'email': login, 'password': senha}
 
@@ -29,69 +29,81 @@ cookie          = {}
 
 
 def init():
+    global db 
+    db = Database()
+    db.BD_ENDERECO  = mysql_endereco
+    db.BD_USUARIO   = mysql_usuario
+    db.BD_SENHA     = mysql_senha
+    db.Connect()
     while True:
-      global db 
-      db = Database()
-      db.BD_ENDERECO  = mysql_endereco
-      db.BD_USUARIO   = mysql_usuario
-      db.BD_SENHA     = mysql_senha
-      db.Connect()
-
-      if Connect():
-          GetData()
-
+      try:
+        GetData()
+      except:
+        ml.messageLog("[ERROR] Ocorreu um erro desconhecido!")  
       ml.messageLog("Rotina finalizada! Aguardando " + str(tempoRotina) + " segundos para nova rotina!")
       time.sleep(tempoRotina)
       
+# ____________________________________________________ #
 
 def IsNotAuthenticated():
-  response = session.post(domain + urljson, cookies=cookie)
-  return len(cookie) == 0 or "You must login first." in response.text
+  try:
+    response = session.post(domain + urljson, cookies=cookie)
+    return len(cookie) == 0 or "You must login first." in response.text
+  except: 
+    return True
 
 def Connect():
     while db.IsNotConnected():
-      ml.messageLog("Banco de dados não conectado!")
-      ml.messageLog("Verifique os dados de conexão e se o banco de dados está ativo!")
-      ml.messageLog("Tentando novamente em 10 segundos...")
+      ml.messageLog("Banco de dados não conectado! Verifique os dados de conexão e se o banco de dados está ativo!")
+      ml.messageLog("Nova tentativa em 10 segundos...")
       time.sleep(10)
       db.Connect()
     global cookie
-    if IsNotAuthenticated():
-      session = req.Session()
-      response = session.post(domain + urllogin, data=values)
-      cookiesdict = session.cookies.get_dict()
-      if cookiesdict:
-        cookiesessionname = next(iter(cookiesdict))
-        cookiesessionkey = cookiesdict[cookiesessionname]
-        cookie = {cookiesessionname: cookiesessionkey}
+    try:
+      if IsNotAuthenticated():
+        session = req.Session()
+        response = session.post(domain + urllogin, data=values)
+        cookiesdict = session.cookies.get_dict()
+        if cookiesdict:
+          cookiesessionname = next(iter(cookiesdict))
+          cookiesessionkey = cookiesdict[cookiesessionname]
+          cookie = {cookiesessionname: cookiesessionkey}
+          ml.messageLog("Autenticado no 4docs!")
+        else :
+          ml.messageLog("Não foi possível autenticar no 4docs!")
+          ml.messageLog("Verifique o estado atual da API ou endereço de acesso!")
+          return False
+      else: 
         ml.messageLog("Autenticado no 4docs!")
-      else :
-        ml.messageLog("Não foi possível autenticar no 4docs!")
-    else: 
-      ml.messageLog("Autenticado no 4docs!")
+    except:
+      ml.messageLog("[ERROR] Não foi possível autenticar no 4docs!")  
     return True
 
+def GetData():
+  if Connect():
+    if db.IsNotConnected():
+      exit()
+    response = GetRequest()
+    qtde = 0
+    for x in response:
+      try:
+        #ml.quickMessageLog(str(qtde) + ' IDs verificados! - Verificando ID: ' + str(x['id']))
+        jsonpath = session.get(domain + urljson + str(x['id']) + '.json', cookies=cookie).json()   
 
+        if 'success' in jsonpath and 'message' in jsonpath and 'Extraction failed' in jsonpath['message']:
+          print(jsonpath['message'])
+        else:
+          if ('pipeline' in jsonpath and 'water' in jsonpath['pipeline']) or \
+          ('items' in jsonpath and 'water' in str(jsonpath['items'])):
+            WaterData(jsonpath, str(x['id']))
+          # elif 'items' in jsonpath and 'energy' in str(jsonpath['items']):
+            # EnergyData(jsonpath)
+      except:
+        ml.messageLog("[ERROR] Erro ao tentar acessar o endereço: " + str(jsonpath))
+      qtde += 1
+      
 def GetRequest():
    return session.get(domain + urlrequest, cookies=cookie).json()['rows']
-
-def GetData():
-  if db.IsNotConnected():
-    exit()
-  response = GetRequest()
-  for x in response:
-    ml.quickMessageLog('Verificando ID: ' + str(x['id']))
-    jsonpath = session.get(domain + urljson + str(x['id']) + '.json', cookies=cookie).json()   
-
-    if 'success' in jsonpath and 'message' in jsonpath and 'Extraction failed' in jsonpath['message']:
-      print(jsonpath['message'])
-    else:
-      if ('pipeline' in jsonpath and 'water' in jsonpath['pipeline']) or \
-      ('items' in jsonpath and 'water' in str(jsonpath['items'])):
-        WaterData(jsonpath, str(x['id']))
-      # elif 'items' in jsonpath and 'energy' in str(jsonpath['items']):
-        # EnergyData(jsonpath)
-      
 
 
 def WaterData(jsonpath, IDDocumento):
