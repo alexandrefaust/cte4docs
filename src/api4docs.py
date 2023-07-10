@@ -87,7 +87,7 @@ def GetData():
     qtde = 0
     for x in response:
       try:
-        #ml.quickMessageLog(str(qtde) + ' IDs verificados! - Verificando ID: ' + str(x['id']))
+        ml.quickMessageLog(str(qtde) + ' IDs verificados! - Verificando ID: ' + str(x['id']))
         jsonpath = session.get(domain + urljson + str(x['id']) + '.json', cookies=cookie).json()   
 
         if 'success' in jsonpath and 'message' in jsonpath and 'Extraction failed' in jsonpath['message']:
