@@ -9,13 +9,13 @@ from src.models.IntervaloConsumo import IntervaloConsumo
 from src.models.Historico import Historico
 from src.database import Database 
 
-login           = 'wagneroliveira@cte.com.br'
-senha           = 'ausfuptebigywxjv'
-quantidade      = 5000
+login           = ''
+senha           = ''
+quantidade      = 0
 tempoRotina     = 10
-mysql_endereco  = 'localhost'
-mysql_usuario   = 'root'
-mysql_senha     = '123456'
+mysql_endereco  = ''
+mysql_usuario   = ''
+mysql_senha     = ''
 
 domain          = 'https://console.4docs.cloud'
 urllogin        = '/login'
@@ -29,7 +29,9 @@ cookie          = {}
 
 
 def init():
-    global db 
+    global db, urlrequest, values 
+    urlrequest = '/requests/js?customer_id=37&limit=' + str(quantidade) + '&status=SUCCESS'
+    values          = {'email': login, 'password': senha}
     db = Database()
     db.BD_ENDERECO  = mysql_endereco
     db.BD_USUARIO   = mysql_usuario
@@ -101,6 +103,7 @@ def GetData():
       except:
         ml.messageLog("[ERROR] Erro ao tentar acessar o endereço: " + str(jsonpath))
       qtde += 1
+    ml.messageLog(str(qtde) + ' IDs verificados!                                       ')
       
 def GetRequest():
    return session.get(domain + urlrequest, cookies=cookie).json()['rows']
