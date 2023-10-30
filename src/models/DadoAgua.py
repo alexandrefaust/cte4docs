@@ -35,7 +35,7 @@ class DadoAgua:
         pass
 
     def __str__(self):
-        return f"INSERT INTO cte4docs.DadoAgua ( \
+        result = f"INSERT INTO cte4docs.DadoAgua ( \
             IDAgua, \
             Comentarios, \
             ComentariosAdicionais, \
@@ -74,10 +74,19 @@ class DadoAgua:
                 {self.ConsumoEfetivo}, \
                 {self.ConsumoFaturado}, \
                 {self.Custo}, \
-                {self.CustoReais}, \
-                '{self.DataInicio}', \
-                '{self.DataFinal}', \
-                {self.Dias}, \
+                {self.CustoReais},"
+        
+        if 'NULL' not in self.DataInicio:
+            result += f"'{self.DataInicio}',"
+        else:
+            result += f"NULL,"
+
+        if 'NULL' not in self.DataFinal:
+            result += f"'{self.DataFinal}',"
+        else:
+            result += f"NULL,"
+
+        result += f"{self.Dias}, \
                 {self.ICMS}, \
                 {self.ICMSTaxa}, \
                 {self.ICMSValorFinal}, \
@@ -99,3 +108,5 @@ class DadoAgua:
                 '{self.TipoFaturamento}', \
                 '{self.IDDocumento}' \
             );"
+        
+        return result

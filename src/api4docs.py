@@ -4,9 +4,15 @@ import time
 from requests import Request, Session
 from src import messagelog as ml 
 from src.models.DadoAgua import DadoAgua
+from src.models.DadoEnergia import DadoEnergia
+from src.models.DadoGas import DadoGas
 from src.models.ItemFaturado import ItemFaturado
+from src.models.ItemEnergia import ItemEnergia
+from src.models.ItemGas import ItemGas
 from src.models.IntervaloConsumo import IntervaloConsumo
 from src.models.Historico import Historico
+from src.models.HistoricoEnergia import HistoricoEnergia
+from src.models.HistoricoGas import HistoricoGas
 from src.database import Database 
 
 login           = ''
@@ -29,21 +35,25 @@ cookie          = {}
 
 
 def init():
-    global db, urlrequest, values 
-    urlrequest = '/requests/js?customer_id=37&limit=' + str(quantidade) + '&status=SUCCESS'
-    values          = {'email': login, 'password': senha}
-    db = Database()
-    db.BD_ENDERECO  = mysql_endereco
-    db.BD_USUARIO   = mysql_usuario
-    db.BD_SENHA     = mysql_senha
-    db.Connect()
-    while True:
       try:
-        GetData()
-      except:
-        ml.messageLog("[ERROR] Ocorreu um erro desconhecido!")  
-      ml.messageLog("Rotina finalizada! Aguardando " + str(tempoRotina) + " segundos para nova rotina!")
-      time.sleep(tempoRotina)
+        global db, urlrequest, values 
+        urlrequest = '/requests/js?customer_id=37&limit=' + str(quantidade) + '&status=SUCCESS'
+        values          = {'email': login, 'password': senha}
+        db = Database()
+        db.BD_ENDERECO  = mysql_endereco
+        db.BD_USUARIO   = mysql_usuario
+        db.BD_SENHA     = mysql_senha
+        db.Connect()
+        while True:
+          try:
+            GetData()
+          except Exception as e:
+            ml.messageLog("[ERROR] Ocorreu um erro inesperado: " + str(e))  
+          ml.messageLog("Rotina finalizada! Aguardando " + str(tempoRotina) + " segundos para nova rotina!")
+          time.sleep(tempoRotina)
+      except Exception as e:
+        ml.messageLog("[ERROR] Erro desconhecido: " + str(e))
+      
       
 # ____________________________________________________ #
 
@@ -84,12 +94,13 @@ def Connect():
 def GetData():
   if Connect():
     if db.IsNotConnected():
+      ml.messageLog("[ERROR] Banco de dados não conectado!")
       exit()
     response = GetRequest()
     qtde = 0
     for x in response:
       try:
-        ml.quickMessageLog(str(qtde) + ' IDs verificados! - Verificando ID: ' + str(x['id']))
+        ml.quickMessageLog(str(qtde) + ' IDs de ' + str(response.__len__()) + '! - Verificando ID: ' + str(x['id']))
         jsonpath = session.get(domain + urljson + str(x['id']) + '.json', cookies=cookie).json()   
 
         if 'success' in jsonpath and 'message' in jsonpath and 'Extraction failed' in jsonpath['message']:
@@ -98,10 +109,14 @@ def GetData():
           if ('pipeline' in jsonpath and 'water' in jsonpath['pipeline']) or \
           ('items' in jsonpath and 'water' in str(jsonpath['items'])):
             WaterData(jsonpath, str(x['id']))
-          # elif 'items' in jsonpath and 'energy' in str(jsonpath['items']):
-            # EnergyData(jsonpath)
-      except:
-        ml.messageLog("[ERROR] Erro ao tentar acessar o endereço: " + str(jsonpath))
+          elif ('pipeline' in jsonpath and 'energy' in jsonpath['pipeline']) or \
+          ('items' in jsonpath and 'energy' in str(jsonpath['items'])):
+            EnergyData(jsonpath, str(x['id']))
+          elif ('pipeline' in jsonpath and 'gas' in jsonpath['pipeline']) or \
+          ('items' in jsonpath and 'gas' in str(jsonpath['items'])):
+            GasData(jsonpath, str(x['id']))
+      except Exception as e:
+        ml.messageLog("[ERROR] Erro inesperado: " + str(e))
       qtde += 1
     ml.messageLog(str(qtde) + ' IDs verificados!                                       ')
       
@@ -139,7 +154,7 @@ def WaterData(jsonpath, IDDocumento):
   
   result = db.FindById('DadoAgua', 'IDDocumento', waterData.IDDocumento)
   if result == None:
-    waterData.ID = db.SaveData(waterData)
+    waterData.ID = db.SaveData(waterData, True)
     if waterData.ID == 0:
       return
   else:
@@ -170,25 +185,123 @@ def WaterData(jsonpath, IDDocumento):
       historico.Data = GetAttribute(historicos[h], 'month')
       historico.Dias = GetAttribute(historicos[h], 'days')
       itens = GetAttribute(historicos[h], 'items')
-      historicoID = db.SaveData(historico)
+      historicoID = db.SaveData(historico, True)
       historico.ItensFaturados = GetItensFaturados(itens, historicoID, True)
 
-
-
-  
 def GetItensFaturados(jsonpath, dadoID, historic = False):
   for item in jsonpath:
     itemFaturado = ItemFaturado()
     if historic:
       itemFaturado.IDHistorico = dadoID
     else:
-      itemFaturado.IDDadoAgua = dadoID
+        itemFaturado.IDDadoAgua = dadoID
+      
     itemFaturado.Categoria = GetAttribute(item, 'type')
     itemFaturado.Nome = GetAttribute(item, 'kind')
     if itemFaturado.Nome == None or 'NULL' in itemFaturado.Nome:
       itemFaturado.Nome = GetAttribute(item, 'text')
+
     itemFaturado.Valor = GetAttribute(item, 'charge')
+
     db.SaveData(itemFaturado)
+
+def EnergyData(jsonpath, IDDocumento):
+  energyData = DadoEnergia()
+  energyData.IDDocumento                      = IDDocumento
+  energyData.IDEnergia                        = GetAttribute(jsonpath, 'locationNumber')
+  energyData.Vencimento                       = GetAttribute(jsonpath, 'dates', 'due')
+  energyData.MesReferente                     = GetAttribute(jsonpath, 'dates', 'month')
+  energyData.DataInicio                       = GetAttribute(jsonpath, 'dates', 'reading', 'periodFrom')
+  energyData.DataFinal                        = GetAttribute(jsonpath, 'dates', 'reading', 'periodUntil')
+  
+  result = db.FindById('DadoEnergia', 'IDDocumento', energyData.IDDocumento)
+  if result == None:
+    energyData.ID = db.SaveData(energyData, True)
+    if energyData.ID == 0:
+      return
+  else:
+    return
+  
+  energyDataID = energyData.ID
+  itensEnergia = ""
+
+  for item in jsonpath["items"]:
+    itemEnergia = ItemEnergia()
+    itemEnergia.GetItens(item, energyDataID)
+    itensEnergia += str(itemEnergia)
+
+  historicos = GetAttribute(jsonpath, 'history')
+  if historicos != 'NULL':
+    for h in historicos:
+      historico = HistoricoEnergia()
+      historico.IDDadoEnergia = energyDataID
+      historico.Data = GetAttribute(historicos[h], 'month')
+      historico.Dias = GetAttribute(historicos[h], 'days')
+      itens = GetAttribute(historicos[h], 'items')
+      historicoID = db.SaveData(historico, True)
+      
+      for item in itens:
+        itemEnergia = ItemEnergia()
+        itemEnergia.GetItens(item, historicoID, True)
+        itensEnergia += str(itemEnergia)
+  
+  db.SaveData(itensEnergia)
+
+def GasData(jsonpath, IDDocumento):
+  gasData = DadoGas()
+  gasData.IDDocumento     = IDDocumento
+  gasData.IDGas           = GetAttribute(jsonpath, 'locationNumber')
+  gasData.Vencimento      = GetAttribute(jsonpath, 'dates', 'due')
+  gasData.MesReferente    = GetAttribute(jsonpath, 'dates', 'month')
+  gasData.DataInicio      = GetAttribute(jsonpath, 'dates', 'reading', 'previous')
+  gasData.DataFinal       = GetAttribute(jsonpath, 'dates', 'reading', 'current')
+  gasData.NumeroNF        = GetAttribute(jsonpath, 'invoiceNumber')
+  gasData.Fornecedor      = GetAttribute(jsonpath, 'stdProvider')
+  gasData.ValorTotal      = GetAttribute(jsonpath, 'sumTotal')
+  gasData.Dias            = GetAttribute(jsonpath, 'days')
+  
+  result = db.FindById('DadoGas', 'IDDocumento', gasData.IDDocumento)
+  if result == None:
+    gasData.ID = db.SaveData(gasData, True)
+    if gasData.ID == 0:
+      return
+  else:
+    return
+  
+  gasDataID = gasData.ID
+  itensGas = ""
+
+  for item in jsonpath["billedItems"]:
+    itemGas = ItemGas()
+    itemGas.GetItens(item, gasDataID)
+    itensGas += str(itemGas)
+    
+
+  for item in jsonpath["measuredItems"]:
+    itemGas = ItemGas()
+    itemGas.GetItens(item, gasDataID)
+    itensGas += str(itemGas)
+
+  for item in jsonpath["taxItems"]:
+    itemGas = ItemGas()
+    itemGas.GetItens(item, gasDataID)
+    itensGas += str(itemGas)
+
+  historicos = GetAttribute(jsonpath, 'history')
+  if historicos != 'NULL':
+    for h in historicos:
+      historico = HistoricoGas()
+      historico.IDDadoGas = gasDataID
+      historico.Data = GetAttribute(historicos[h], 'month')
+      itens = GetAttribute(historicos[h], 'items')
+      historicoID = db.SaveData(historico, True)
+      
+      for item in itens:
+        itemGas = ItemGas()
+        itemGas.GetItens(item, historicoID, True)
+        itensGas += str(itemGas)
+  
+  db.SaveData(itensGas)
 
 def GetAttribute(jsonpath, attribute, attribute2 = "", attribute3 = ""):
   if attribute in jsonpath \
@@ -207,4 +320,3 @@ def GetAttribute(jsonpath, attribute, attribute2 = "", attribute3 = ""):
     return jsonpath[attribute]
 
   return 'NULL'
-

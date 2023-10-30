@@ -17,7 +17,7 @@ class ItemFaturado:
         retorno += f"Categoria, "
         retorno += f"Valor "
         retorno += f") VALUES ("        
-        retorno += f"{self.IDDadoAgua}, "                    
+        retorno += f"{self.IDDadoAgua}, "                                    
         retorno += f"{self.IDHistorico}, "
         retorno += f"'{self.Nome}', "
         retorno += f"'{self.Categoria}', "
