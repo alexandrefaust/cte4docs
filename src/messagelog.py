@@ -29,11 +29,11 @@ def messageLog(message, sendErrorToEmail = False):
         lock.release()
         if message.count("[ERROR]") >= 1:
             message = message + ": " + traceback.format_exc()
-        message = message + "\n"
+            message = message + "\n"
+            logFile = open("./data/log/" + str(datetime.datetime.now()).replace("-", "")[:8] + ".log",'a')
+            logFile.write(message)
+            logFile.close()
         
-        logFile = open("./data/log/" + str(datetime.datetime.now()).replace("-", "")[:8] + ".log",'a')
-        logFile.write(message)
-        logFile.close()
         if sendErrorToEmail and message.count("[INFO]") < 1:
             global EMAIL_MESSAGE 
             EMAIL_MESSAGE = EMAIL_MESSAGE + message
@@ -48,12 +48,12 @@ def messageLogSL(message, sendErrorToEmail = False):
         message = "[" + str(datetime.datetime.now()) + "] " + message
         if message.count("[ERROR]") >= 1:
             message = message + ": " + traceback.format_exc()
+            logFile = open("./data/log/" + str(datetime.datetime.now()).replace("-", "")[:8] + ".log",'a')
+            logFile.write(message + "\n")
+            logFile.close()
         sys.stdout.write("\r" + message)
         sys.stdout.flush()
         
-        logFile = open("./data/log/" + str(datetime.datetime.now()).replace("-", "")[:8] + ".log",'a')
-        #logFile.write(message + "\n")
-        logFile.close()
         if sendErrorToEmail and message.count("[INFO]") < 1:
             global EMAIL_MESSAGE 
             EMAIL_MESSAGE = EMAIL_MESSAGE + message
