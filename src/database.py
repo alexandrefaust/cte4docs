@@ -20,6 +20,7 @@ class Database:
                 user        = self.BD_USUARIO,
                 password    = self.BD_SENHA)
             self.mycursor = self.mydb.cursor()
+            self.mydb.autocommit = True
             self.CreateDatabase()
             ml.messageLog("Banco de dados conectado!")
         except mysql.connector.Error as err:
@@ -29,45 +30,74 @@ class Database:
                 print("A tabela não existe")
             else:
                 print(err)
-            return False
-        except:
-            ml.messageLog("Não foi possível conectar")
-            return False
+            exit()
+        except Exception as e:
+            ml.messageLog("Não foi possível conectar, motivo: " + str(e))
+            exit()
         
 
     def CreateDatabase(self):
-        if path.exists("src/database.sql"):
-            f = open("src/database.sql", "r")
+        self.open()
+        if path.exists("src/db/database.sql"):
+            f = open("src/db/database.sql", "r")
             self.mycursor.execute(f.read())
             f.close()
         else:
             ml.messageLog("Não foi possível verificar o banco de dados!")
             exit()
+        
+        self.close()
+        self.open()
+
+        i = 1
+        while path.exists("src/db/dbup" + str(i) + ".sql"):
+            ml.messageLog("Updating database...")
+            f = open("src/db/dbup" + str(i) + ".sql", "r")
+            self.mycursor.execute(f.read())
+            f.close()
+            i += 1
+
+        self.close()
+        
 
 
     def FindById(self, tabela, coluna, valor):
-        self.mydb.reconnect()
+        self.open()
         self.mycursor.execute('Select * from cte4docs.' + str(tabela) + ' where ' + str(coluna) + ' = \'' + str(valor) + '\'')
         result = self.mycursor.fetchone()
+        self.close()
         return result
     
     def Find(self, busca):
-        self.mydb.reconnect()
+        self.open()
         self.mycursor.execute(busca)
         result = self.mycursor.fetchone()
+        self.close()
         return result == None
 
-    def SaveData(self, data):
+    def SaveData(self, data, returnLastID = False):
         try:
-            self.mydb.reconnect()
+            self.open()
+            self.mydb.reset_session()
             self.mycursor.execute(str(data))
-            self.mydb.commit()
-            return self.mycursor.lastrowid
-        except:
-            ml.messageLog('[ERROR] Não foi possível salvar os seguintes dados: \n' + str(data))
+            lastID = 0
+            if returnLastID:
+                lastID = self.mycursor._last_insert_id
+            self.close()
+            return lastID
+        except Exception as e:
+            ml.messageLog('[ERROR] Não foi possível salvar os dados, motivo: ' + str(e))
             return 0
 
     def IsNotConnected(self):
         if self.mydb != "":
             self.mydb.reconnect()
         return self.mydb == "" or not self.mydb.is_connected()
+
+    def close(self):
+        self.mycursor.close()
+        self.mydb.disconnect()
+
+    def open(self):
+        self.mydb.connect()
+        self.mycursor = self.mydb.cursor()
