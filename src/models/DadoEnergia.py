@@ -2,23 +2,19 @@ class DadoEnergia:
     ID = "NULL"
     IDEnergia = "NULL"
     Comentarios = "NULL"
-    ComentariosAdicionais = "NULL"
-    
+    ComentariosAdicionais = "NULL"    
     LocalData = "NULL"
-    Periodo = "NULL"
-    
+    Periodo = "NULL"    
     DataInicio = "NULL"
     DataFinal = "NULL"
-    Dias = "NULL"
-        
+    Dias = "NULL"        
     Status = "Recebido"
-    StatusChecagem = "NULL"
-    
+    StatusChecagem = "NULL"    
     CustoMercadoLivreLongoPrazo = "NULL"
     CompraMercadoLivreLongoPrazo = "NULL"
-
     Vencimento = "NULL"
     IDDocumento = "NULL"
+    NumeroNF = "NULL"
 
     def __init__(self):
         pass
@@ -38,7 +34,8 @@ class DadoEnergia:
             CustoMercadoLivreLongoPrazo, \
             CompraMercadoLivreLongoPrazo, \
             Vencimento, \
-            IDDocumento) \
+            IDDocumento, \
+            NumeroNF) \
             VALUES \
             (\
                 '{self.IDEnergia}', \
@@ -63,7 +60,8 @@ class DadoEnergia:
             '{self.CustoMercadoLivreLongoPrazo}', \
             '{self.CompraMercadoLivreLongoPrazo}', \
             '{self.Vencimento}', \
-            '{self.IDDocumento}' \
+            '{self.IDDocumento}', \
+            '{self.NumeroNF}' \
             );"
         
         return result

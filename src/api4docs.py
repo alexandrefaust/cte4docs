@@ -14,6 +14,7 @@ from src.models.Historico import Historico
 from src.models.HistoricoEnergia import HistoricoEnergia
 from src.models.HistoricoGas import HistoricoGas
 from src.database import Database 
+from src import energyCap
 
 login           = ''
 senha           = ''
@@ -43,7 +44,7 @@ def init():
         db.BD_ENDERECO  = mysql_endereco
         db.BD_USUARIO   = mysql_usuario
         db.BD_SENHA     = mysql_senha
-        db.Connect()
+        db.CheckDatabase()
         while True:
           try:
             GetData()
@@ -96,11 +97,13 @@ def GetData():
     if db.IsNotConnected():
       ml.messageLog("[ERROR] Banco de dados não conectado!")
       exit()
+    else: 
+      ml.messageLog("Conectado ao Banco de dados!")
     response = GetRequest()
     qtde = 0
     for x in response:
       try:
-        ml.quickMessageLog(str(qtde) + ' IDs de ' + str(response.__len__()) + '! - Verificando ID: ' + str(x['id']))
+        ml.quickMessageLog('[' + str(qtde).zfill(4) + '/' + str(response.__len__()) + '] Verificando ID: ' + str(x['id']))
         jsonpath = session.get(domain + urljson + str(x['id']) + '.json', cookies=cookie).json()   
 
         if 'success' in jsonpath and 'message' in jsonpath and 'Extraction failed' in jsonpath['message']:
@@ -109,14 +112,15 @@ def GetData():
           if ('pipeline' in jsonpath and 'water' in jsonpath['pipeline']) or \
           ('items' in jsonpath and 'water' in str(jsonpath['items'])):
             WaterData(jsonpath, str(x['id']))
-          elif ('pipeline' in jsonpath and 'energy' in jsonpath['pipeline']) or \
-          ('items' in jsonpath and 'energy' in str(jsonpath['items'])):
-            EnergyData(jsonpath, str(x['id']))
-          elif ('pipeline' in jsonpath and 'gas' in jsonpath['pipeline']) or \
-          ('items' in jsonpath and 'gas' in str(jsonpath['items'])):
-            GasData(jsonpath, str(x['id']))
+          #elif ('pipeline' in jsonpath and 'energy' in jsonpath['pipeline']) or \
+          #('items' in jsonpath and 'energy' in str(jsonpath['items'])):
+            #EnergyData(jsonpath, str(x['id']))
+          #elif ('pipeline' in jsonpath and 'gas' in jsonpath['pipeline']) or \
+          #('items' in jsonpath and 'gas' in str(jsonpath['items'])):
+            #GasData(jsonpath, str(x['id']))
       except Exception as e:
-        ml.messageLog("[ERROR] Erro inesperado: " + str(e))
+         ml.messageLog("[ERROR] Erro inesperado: " + str(e))
+      db.close()
       qtde += 1
     ml.messageLog(str(qtde) + ' IDs verificados!                                       ')
       
@@ -127,7 +131,7 @@ def GetRequest():
 def WaterData(jsonpath, IDDocumento):
   waterData = DadoAgua()
   waterData.IDDocumento         = IDDocumento
-  waterData.IDAgua              = GetAttribute(jsonpath, 'locationNumber')
+  waterData.IDAgua              = GetAttribute(jsonpath, 'identifiers', 'pde_rgi')
   waterData.Custo               = GetAttribute(jsonpath, 'total')
   waterData.LeituraAtual        = GetAttribute(jsonpath, 'currentMeterReading')
   waterData.LeituraAnterior     = GetAttribute(jsonpath, 'previousMeterReading')
@@ -151,7 +155,8 @@ def WaterData(jsonpath, IDDocumento):
   waterData.PISCOFINSTaxa       = GetAttribute(jsonpath, 'pis_cofins', 'rate')
   waterData.PISCOFINSValorFinal = GetAttribute(jsonpath, 'pis_cofins', 'value')
   waterData.TipoFaturamento     = GetAttribute(jsonpath, 'billingType')
-  
+  waterData.NumeroNF            = GetAttribute(jsonpath, 'invoiceNumber')
+
   result = db.FindById('DadoAgua', 'IDDocumento', waterData.IDDocumento)
   if result == None:
     waterData.ID = db.SaveData(waterData, True)
@@ -162,7 +167,7 @@ def WaterData(jsonpath, IDDocumento):
   
   waterDataID = waterData.ID
 
-  GetItensFaturados(GetAttribute(jsonpath, 'items'), waterDataID)
+  bodyLines = GetItensFaturados(GetAttribute(jsonpath, 'items'), waterDataID)
 
   ranges = GetAttribute(jsonpath, 'ranges')
   if ranges != 'NULL':
@@ -176,6 +181,7 @@ def WaterData(jsonpath, IDDocumento):
       if intervalo.Taxa == 'NULL':
         intervalo.Taxa = GetAttribute(item, 'rate')
       db.SaveData(intervalo)
+      
 
   historicos = GetAttribute(jsonpath, 'history')
   if historicos != 'NULL':
@@ -188,7 +194,12 @@ def WaterData(jsonpath, IDDocumento):
       historicoID = db.SaveData(historico, True)
       historico.ItensFaturados = GetItensFaturados(itens, historicoID, True)
 
+  ecWaterData = waterData.toEnergyCap()
+  
+  energyCap.Save(ecWaterData, bodyLines)
+
 def GetItensFaturados(jsonpath, dadoID, historic = False):
+  bodyLines = []
   for item in jsonpath:
     itemFaturado = ItemFaturado()
     if historic:
@@ -204,16 +215,19 @@ def GetItensFaturados(jsonpath, dadoID, historic = False):
     itemFaturado.Valor = GetAttribute(item, 'charge')
 
     db.SaveData(itemFaturado)
+    bodyLines.append(itemFaturado.toEnergyCap())
+  return bodyLines
 
 def EnergyData(jsonpath, IDDocumento):
   energyData = DadoEnergia()
-  energyData.IDDocumento                      = IDDocumento
-  energyData.IDEnergia                        = GetAttribute(jsonpath, 'locationNumber')
-  energyData.Vencimento                       = GetAttribute(jsonpath, 'dates', 'due')
-  energyData.MesReferente                     = GetAttribute(jsonpath, 'dates', 'month')
-  energyData.DataInicio                       = GetAttribute(jsonpath, 'dates', 'reading', 'periodFrom')
-  energyData.DataFinal                        = GetAttribute(jsonpath, 'dates', 'reading', 'periodUntil')
-  
+  energyData.IDDocumento  = IDDocumento
+  energyData.IDEnergia    = GetAttribute(jsonpath, 'locationNumber')
+  energyData.Vencimento   = GetAttribute(jsonpath, 'dates', 'due')
+  energyData.MesReferente = GetAttribute(jsonpath, 'dates', 'month')
+  energyData.DataInicio   = GetAttribute(jsonpath, 'dates', 'reading', 'periodFrom')
+  energyData.DataFinal    = GetAttribute(jsonpath, 'dates', 'reading', 'periodUntil')
+  energyData.NumeroNF     = GetAttribute(jsonpath, 'invoiceNumber')
+
   result = db.FindById('DadoEnergia', 'IDDocumento', energyData.IDDocumento)
   if result == None:
     energyData.ID = db.SaveData(energyData, True)

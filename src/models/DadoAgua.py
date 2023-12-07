@@ -1,3 +1,5 @@
+from src.models import Enum
+
 class DadoAgua:
     ID = "NULL"
     IDAgua = "NULL"
@@ -30,6 +32,7 @@ class DadoAgua:
     Vencimento = "NULL"
     TipoFaturamento = "NULL"
     IDDocumento = "NULL"
+    NumeroNF = "NULL"
 
     def __init__(self):
         pass
@@ -65,7 +68,8 @@ class DadoAgua:
             StatusChecagem, \
             Vencimento, \
             TipoFaturamento, \
-            IDDocumento) \
+            IDDocumento, \
+            NumeroNF) \
             VALUES \
             (\
                 '{self.IDAgua}', \
@@ -106,7 +110,65 @@ class DadoAgua:
                 '{self.StatusChecagem}', \
                 '{self.Vencimento}', \
                 '{self.TipoFaturamento}', \
-                '{self.IDDocumento}' \
+                '{self.IDDocumento}', \
+                '{self.NumeroNF}' \
             );"
         
         return result
+    
+    def toEnergyCap(self):
+        bodyLines = []
+
+        
+        bodyLines.append({
+            "observationTypeId": Enum.ObservationType.INFO_USE.value,
+            "valueUnitId": Enum.ValueUnit.VOLUME.value,
+            "value": ('Null' in self.ConsumoEfetivo if 0.00 else self.ConsumoEfetivo),
+            "costUnitId": None,
+            "cost": None,
+            "caption": "Volume de Esgoto"
+        })
+
+        if not 'NULL' in str(self.ConsumoFaturado):
+            bodyLines.append({
+                "observationTypeId": Enum.ObservationType.INFO_USE.value,
+                "valueUnitId": 93,
+                "value": self.ConsumoFaturado,
+                "costUnitId": None,
+                "cost": None,
+                "caption": "Volume de Água"
+            })
+
+        if not 'NULL' in str(self.Custo):
+            bodyLines.append({
+                "observationTypeId": 53,
+                "valueUnitId": None,
+                "value": None,
+                "costUnitId": 112,
+                "cost": self.Custo,
+                "caption": "Valor Total Fatura"
+            })
+
+        bodyLines.append({
+            "observationTypeId": Enum.ObservationType.INFO_COST.value,
+            "valueUnitId": None,
+            "value": None,
+            "costUnitId": Enum.CostUnit.BRL.value,
+            "cost": self.PISCOFINSValorFinal,
+            "caption": "Valor Total Tributos"
+        })
+
+        return {
+            "Id": self.IDAgua,
+            "beginDate": self.DataInicio,
+            "endDate": self.DataFinal,
+            "billingPeriod": self.Periodo.replace('-', '')[:6],
+            "dueDate": self.Vencimento,
+            "invoiceNumber": self.NumeroNF,
+            "meters": [
+            {
+                "bodyLines": bodyLines
+            }
+        ],
+        "accountBodyLines":  []
+    }

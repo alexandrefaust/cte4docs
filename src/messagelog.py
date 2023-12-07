@@ -16,6 +16,17 @@ EMAIL_SMTP_PORT                     = "587"
 EMAIL_MESSAGE                       = "Ocorreram os seguintes erros durante a execução:\n\n"
 ENVIAR_EMAIL                        = False
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 ####################################################################################################################
 ##### Método messageLog(message, sendErrorToEmail = False)
 #####   - Faz o registro do erro em um arquivo conversor.log e no console, é enviado o e-mail caso pedido
@@ -28,12 +39,15 @@ def messageLog(message, sendErrorToEmail = False):
         print(message)
         lock.release()
         if message.count("[ERROR]") >= 1:
-            message = message + ": " + traceback.format_exc()
+            message = bcolors.FAIL + message + ": " + traceback.format_exc()
             message = message + "\n"
             logFile = open("./data/log/" + str(datetime.datetime.now()).replace("-", "")[:8] + ".log",'a')
             logFile.write(message)
             logFile.close()
         
+        if message.count("[AVISO]") >= 1:
+            message = bcolors.WARNING + message
+
         if sendErrorToEmail and message.count("[INFO]") < 1:
             global EMAIL_MESSAGE 
             EMAIL_MESSAGE = EMAIL_MESSAGE + message
@@ -67,7 +81,7 @@ def quickMessageLog(message):
     try:
         message = "[" + str(datetime.datetime.now()) + "] " + message
         lock.acquire()
-        print(message, end="\r")
+        print(message)
         lock.release()
     except:
         lock.acquire()

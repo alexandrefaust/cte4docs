@@ -1,3 +1,5 @@
+from src.models import Enum
+
 class ItemFaturado:
     ID          = 'NULL'
     IDDadoAgua  = 'NULL'
@@ -32,3 +34,50 @@ class ItemFaturado:
             Nome = {self.Nome} and \
             Categoria = {self.Categoria} and \
             Valor = {self.Valor}"
+    
+    def toEnergyCap(self):
+        if not 'NULL' in self.Nome or not 'NULL' in self.Categoria or not 'NULL' in str(self.Valor):
+            result = {}
+
+            if "water" in self.Categoria:
+                result = {
+                    "observationTypeId": Enum.ObservationType.INFO_COST.value, 
+                    "valueUnitId": None,
+                    "value": None,
+                    "costUnitId": Enum.CostUnit.BRL.value,
+                    "cost": self.Valor,
+                    "caption": "Valor Total Água"
+                }
+            elif "sewer" in self.Categoria:
+                result = {
+                    "observationTypeId": Enum.ObservationType.INFO_COST.value,
+                    "valueUnitId": None,
+                    "value": None,
+                    "costUnitId": Enum.CostUnit.BRL.value,
+                    "cost": self.Valor,
+                    "caption": "Valor Total Esgoto"
+                }
+            elif "other" in self.Categoria:
+                observationID = Enum.ObservationType.INFO_COST.value
+                caption = "Valor Outros Débitos"
+
+                if "Fator K" in self.Nome:
+                    caption = "Fator K"
+                elif "Serviços 1" in self.Nome:
+                    caption = "Valor Serviços"
+                elif "Multa" in self.Nome:
+                    caption = "Valor Multas"
+                elif "Crédito" in self.Nome:
+                    caption = "Valor Créditos e Devoluções"
+                    
+
+                result = {
+                    "observationTypeId": observationID,
+                    "valueUnitId": None,
+                    "value": None,
+                    "costUnitId": Enum.CostUnit.BRL.value,
+                    "cost": self.Valor,
+                    "caption": caption
+                }
+            return result
+            
