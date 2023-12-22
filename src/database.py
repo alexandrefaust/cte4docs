@@ -1,5 +1,4 @@
 import mysql.connector
-import time
 from src import messagelog as ml 
 from os import path
 from mysql.connector import errorcode
@@ -47,9 +46,11 @@ class Database:
 
     def CreateDatabase(self):
         self.open()
-        if path.exists("src/db/database.sql"):
-            f = open("src/db/database.sql", "r")
-            self.mycursor.execute(f.read(), multi=True)
+        if path.exists("./src/db/database.sql"):
+            f = open("./src/db/database.sql", "r")
+            read = f.read().replace("\n", "").replace("\t", "")
+            result = self.mycursor.execute(read, multi=True)
+            result.send(None)
             f.close()
         else:
             ml.messageLog("Não foi possível verificar o banco de dados!")
@@ -65,7 +66,8 @@ class Database:
                 ml.messageLog("Updating database with dbup" + str(i) + ".sql...")
                 f = open("src/db/dbup" + str(i) + ".sql", "r")
                 self.open()
-                self.mycursor.execute(f.read(), multi=True)
+                result = self.mycursor.execute(f.read(), multi=True)
+                result.send(None)
                 f.close()
             else:
                 i += 1
@@ -91,7 +93,8 @@ class Database:
         try:
             self.open()
             self.mydb.reset_session()
-            self.mycursor.execute(str(data), multi=True)
+            result = self.mycursor.execute(str(data), multi=True)
+            result.send(None)
             lastID = 0
             if returnLastID:
                 lastID = self.mycursor._last_insert_id
