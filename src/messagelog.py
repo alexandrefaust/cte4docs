@@ -15,6 +15,7 @@ EMAIL_SMTP_ADDRESS                  = "smtp-mail.outlook.com"
 EMAIL_SMTP_PORT                     = "587"
 EMAIL_MESSAGE                       = "Ocorreram os seguintes erros durante a execução:\n\n"
 ENVIAR_EMAIL                        = False
+NEW_LINE                            = True
 
 class bcolors:
     HEADER = '\033[95m'
@@ -34,21 +35,27 @@ class bcolors:
 ####################################################################################################################
 def messageLog(message, sendErrorToEmail = False):
     try:
+        global NEW_LINE
         message = "[" + str(datetime.datetime.now()) + "] " + message
         lock.acquire()
+        if not NEW_LINE:
+            print("\r", end="")
+        NEW_LINE = True
         print(message)
         lock.release()
-        if message.count("[ERROR]") >= 1:
-            message = bcolors.FAIL + message + ": " + traceback.format_exc()
+        if "[ERROR]" in message or "[WARNING]" in message:
+            message = bcolors.FAIL + message
+            if "[ERROR]" in message:
+                message += ": " + traceback.format_exc()
             message = message + "\n"
             logFile = open("./data/log/" + str(datetime.datetime.now()).replace("-", "")[:8] + ".log",'a')
             logFile.write(message)
             logFile.close()
         
-        if message.count("[AVISO]") >= 1:
+        elif "[WARNING]" in message:
             message = bcolors.WARNING + message
 
-        if sendErrorToEmail and message.count("[INFO]") < 1:
+        if sendErrorToEmail:
             global EMAIL_MESSAGE 
             EMAIL_MESSAGE = EMAIL_MESSAGE + message
     except:
@@ -59,16 +66,19 @@ def messageLog(message, sendErrorToEmail = False):
 
 def messageLogSL(message, sendErrorToEmail = False):
     try:
+        global NEW_LINE
         message = "[" + str(datetime.datetime.now()) + "] " + message
-        if message.count("[ERROR]") >= 1:
+        lock.acquire()
+        NEW_LINE = False
+        print("\r" + message, end="")
+        lock.release()
+        if "[ERROR]" in message or "[WARNING]" in message:
             message = message + ": " + traceback.format_exc()
             logFile = open("./data/log/" + str(datetime.datetime.now()).replace("-", "")[:8] + ".log",'a')
             logFile.write(message + "\n")
             logFile.close()
-        sys.stdout.write("\r" + message)
-        sys.stdout.flush()
         
-        if sendErrorToEmail and message.count("[INFO]") < 1:
+        if sendErrorToEmail and "[INFO]" not in message:
             global EMAIL_MESSAGE 
             EMAIL_MESSAGE = EMAIL_MESSAGE + message
     except:

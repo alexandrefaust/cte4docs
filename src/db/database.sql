@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS `Historico` (
     FOREIGN KEY (IDDadoAgua) REFERENCES DadoAgua(ID)
 ) ENGINE = InnoDB;
 
-CREATE TABLE IF NOT EXISTS `ItemFaturado` ( 
+CREATE TABLE IF NOT EXISTS `ItemAgua` ( 
 	`ID` INT NOT NULL AUTO_INCREMENT ,
 	`IDDadoAgua` INT NULL ,
 	`IDHistorico` INT NULL ,
@@ -159,30 +159,32 @@ CREATE TABLE IF NOT EXISTS `Energia` (
 	PRIMARY KEY (IDEnergia)
 ) ENGINE = InnoDB;
 
-CREATE TABLE IF NOT EXISTS `DadoEnergia` ( 
-	`ID` INT NOT NULL AUTO_INCREMENT , 
-	`IDEnergia` VARCHAR(150) NULL , 
+CREATE TABLE IF NOT EXISTS `DadoEnergia`(
+	`ID` INT NOT NULL AUTO_INCREMENT,
+	`IDEnergia` VARCHAR(150) NULL,
 
-    `Comentarios` VARCHAR(500) NULL , 
-    `ComentariosAdicionais` VARCHAR(500) NULL , 
+	`BandeiraTarifaria` VARCHAR(150) NULL,
 
-    `LocalData` VARCHAR(150) NULL , 
+    `Comentarios` VARCHAR(500) NULL,
+    `ComentariosAdicionais` VARCHAR(500) NULL,
+
+    `LocalData` VARCHAR(150) NULL, 
     `Periodo` VARCHAR(150) NULL, 
 
-    `DataInicio` DATETIME NULL , 
-    `DataFinal` DATETIME NULL , 
-    `Dias` INT NULL , 
+    `DataInicio` DATETIME NULL,
+	`DataFinal` DATETIME NULL,
+    `Dias` INT NULL,
 
     `Status` VARCHAR(100) DEFAULT 'Recebido', 
     `StatusChecagem` VARCHAR(100) NULL , 
 
-	`CustoMercadoLivreLongoPrazo` VARCHAR(100) NULL , 
-	`CompraMercadoLivreLongoPrazo` VARCHAR(100) NULL , 
+	`CustoMercadoLivreLongoPrazo` VARCHAR(100) NULL,
+	`CompraMercadoLivreLongoPrazo` VARCHAR(100) NULL,
 
-    `Vencimento` DATETIME NULL , 
-	`IDDocumento` VARCHAR(100) NULL , 
+    `Vencimento` DATETIME NULL,
+	`IDDocumento` VARCHAR(100) NULL,
 
-	`NumeroNF` VARCHAR(150) NULL , 
+	`NumeroNF` VARCHAR(150) NULL,
 	`Date` DATETIME NOT NULL DEFAULT NOW(),
 
 	PRIMARY KEY (ID)

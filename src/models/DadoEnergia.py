@@ -1,20 +1,21 @@
 class DadoEnergia:
-    ID = "NULL"
-    IDEnergia = "NULL"
-    Comentarios = "NULL"
-    ComentariosAdicionais = "NULL"    
-    LocalData = "NULL"
-    Periodo = "NULL"    
-    DataInicio = "NULL"
-    DataFinal = "NULL"
-    Dias = "NULL"        
-    Status = "Recebido"
-    StatusChecagem = "NULL"    
-    CustoMercadoLivreLongoPrazo = "NULL"
-    CompraMercadoLivreLongoPrazo = "NULL"
-    Vencimento = "NULL"
-    IDDocumento = "NULL"
-    NumeroNF = "NULL"
+    ID                              = "NULL"
+    IDEnergia                       = "NULL"
+    Comentarios                     = "NULL"
+    ComentariosAdicionais           = "NULL"    
+    LocalData                       = "NULL"
+    Periodo                         = "NULL"    
+    DataInicio                      = "NULL"
+    DataFinal                       = "NULL"
+    Dias                            = "NULL"        
+    Status                          = "Recebido"
+    StatusChecagem                  = "NULL"    
+    CustoMercadoLivreLongoPrazo     = "NULL"
+    CompraMercadoLivreLongoPrazo    = "NULL"
+    Vencimento                      = "NULL"
+    IDDocumento                     = "NULL"
+    NumeroNF                        = "NULL"
+    BandeiraTarifaria               = "NULL"
 
     def __init__(self):
         pass
@@ -35,7 +36,8 @@ class DadoEnergia:
             CompraMercadoLivreLongoPrazo, \
             Vencimento, \
             IDDocumento, \
-            NumeroNF) \
+            NumeroNF, \
+            BandeiraTarifaria) \
             VALUES \
             (\
                 '{self.IDEnergia}', \
@@ -61,7 +63,8 @@ class DadoEnergia:
             '{self.CompraMercadoLivreLongoPrazo}', \
             '{self.Vencimento}', \
             '{self.IDDocumento}', \
-            '{self.NumeroNF}' \
+            '{self.NumeroNF}', \
+            '{self.BandeiraTarifaria}' \
             );"
         
         return result

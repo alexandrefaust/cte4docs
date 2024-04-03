@@ -57,20 +57,22 @@ class ItemEnergia:
         if historic:
             self.IDHistoricoEnergia = dadoID
         else:
-            self.IDDadoEnergia = dadoID        
+            self.IDDadoEnergia = dadoID
 
-        self.Nome = api4docs.GetAttribute(item, 'kind')        
+        self.Nome = api4docs.GetAttribute(item, 'kind')
         if self.Nome == None or 'NULL' in self.Nome:
             self.Nome = api4docs.GetAttribute(item, 'name')
+            if self.Nome == None or 'NULL' in self.Nome:
+                self.Nome == 'NULL'
+
+        self.Medida = api4docs.GetAttribute(item, 'billed')
+        if self.Medida == None or self.Medida == 0:
+            self.Medida = api4docs.GetAttribute(item, 'measured')
+            if self.Medida == None:
+                self.Medida == 0
 
         self.Categoria = api4docs.GetAttribute(item, 'type')
         self.Periodo = api4docs.GetAttribute(item, 'period')
         self.Tarifa = api4docs.GetAttribute(item, 'rate')
         self.Custo = api4docs.GetAttribute(item, 'charge')
-        self.MedidaFaturada = api4docs.GetAttribute(item, 'billed')
         self.Contratada = api4docs.GetAttribute(item, 'contract')
-        self.Medida = api4docs.GetAttribute(item, 'measured')
-
-            
-
-            

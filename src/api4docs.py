@@ -26,6 +26,7 @@ mysql_senha     = ''
 
 domain          = 'https://console.4docs.cloud'
 urllogin        = '/login'
+urlrequestall   = '/request/all'
 urlrequest      = '/requests/js?customer_id=37&limit=' + str(quantidade) + '&status=SUCCESS'
 urljson         = '/json/'
 values          = {'email': login, 'password': senha}
@@ -36,34 +37,38 @@ cookie          = {}
 
 
 def init():
+  try:
+    ml.messageLog("Start!")
+    global db, urlrequest, values 
+    urlrequest = '/requests/js?customer_id=37&limit=' + str(quantidade) + '&status=SUCCESS'
+    values          = {'email': login, 'password': senha}
+    db = Database()
+    db.BD_ENDERECO  = mysql_endereco
+    db.BD_USUARIO   = mysql_usuario
+    db.BD_SENHA     = mysql_senha
+    db.CheckDatabase()
+    while True:
       try:
-        global db, urlrequest, values 
-        urlrequest = '/requests/js?customer_id=37&limit=' + str(quantidade) + '&status=SUCCESS'
-        values          = {'email': login, 'password': senha}
-        db = Database()
-        db.BD_ENDERECO  = mysql_endereco
-        db.BD_USUARIO   = mysql_usuario
-        db.BD_SENHA     = mysql_senha
-        db.CheckDatabase()
-        while True:
-          try:
-            GetData()
-          except Exception as e:
-            ml.messageLog("[ERROR] Ocorreu um erro inesperado: " + str(e))  
-          ml.messageLog("Rotina finalizada! Aguardando " + str(tempoRotina) + " segundos para nova rotina!")
-          time.sleep(tempoRotina)
+        GetData()
       except Exception as e:
-        ml.messageLog("[ERROR] Erro desconhecido: " + str(e))
+        ml.messageLog("[ERROR] Ocorreu um erro inesperado: " + str(e))  
+      ml.messageLog("Rotina finalizada! Aguardando " + str(tempoRotina) + " segundos para nova rotina!")
+      time.sleep(tempoRotina)
+  except Exception as e:
+    ml.messageLog("[ERROR] Erro desconhecido: " + str(e))
       
       
 # ____________________________________________________ #
 
-def IsNotAuthenticated():
+def IsAuthenticated():
   try:
-    response = session.post(domain + urljson, cookies=cookie)
-    return len(cookie) == 0 or "You must login first." in response.text
+    global cookie
+    response = session.get(domain + urlrequestall, cookies=cookie)
+    time.sleep(1)
+    response = session.get(domain + urlrequestall, cookies=cookie)
+    return not (len(cookie) == 0 or "login" in response.text)
   except: 
-    return True
+    return False
 
 def Connect():
     while db.IsNotConnected():
@@ -71,23 +76,25 @@ def Connect():
       ml.messageLog("Nova tentativa em 10 segundos...")
       time.sleep(10)
       db.Connect()
-    global cookie
     try:
-      if IsNotAuthenticated():
+      ml.messageLog("[4docs] Autenticando...")
+      if not IsAuthenticated():
         session = req.Session()
-        response = session.post(domain + urllogin, data=values)
+        session.post(domain + urllogin, data=values)
         cookiesdict = session.cookies.get_dict()
         if cookiesdict:
+          global cookie
           cookiesessionname = next(iter(cookiesdict))
           cookiesessionkey = cookiesdict[cookiesessionname]
           cookie = {cookiesessionname: cookiesessionkey}
-          ml.messageLog("Autenticado no 4docs!")
-        else :
-          ml.messageLog("Não foi possível autenticar no 4docs!")
-          ml.messageLog("Verifique o estado atual da API ou endereço de acesso!")
+          
+        if not IsAuthenticated():
+          ml.messageLog("[4docs] Não foi possível autenticar! Verifique o estado atual da API ou endereço de acesso!")
           return False
+        else:
+          ml.messageLog("[4docs] Autenticado!")
       else: 
-        ml.messageLog("Autenticado no 4docs!")
+        ml.messageLog("[4docs] Autenticado!")
     except:
       ml.messageLog("[ERROR] Não foi possível autenticar no 4docs!")  
     return True
@@ -123,10 +130,12 @@ def GetData():
       db.close()
       qtde += 1
     ml.messageLog(str(qtde) + ' IDs verificados!                                       ')
-      
-def GetRequest():
-   return session.get(domain + urlrequest, cookies=cookie).json()['rows']
 
+def GetRequest():
+   response = session.get(domain + urlrequest, cookies=cookie)
+   rjson = response.json()
+   rows = rjson['rows']
+   return rows
 
 def WaterData(jsonpath, IDDocumento):
   waterData = DadoAgua()
@@ -156,6 +165,7 @@ def WaterData(jsonpath, IDDocumento):
   waterData.PISCOFINSValorFinal = GetAttribute(jsonpath, 'pis_cofins', 'value')
   waterData.TipoFaturamento     = GetAttribute(jsonpath, 'billingType')
   waterData.NumeroNF            = GetAttribute(jsonpath, 'invoiceNumber')
+
 
   result = db.FindById('DadoAgua', 'IDDocumento', waterData.IDDocumento)
   if result == None:
